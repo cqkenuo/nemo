@@ -7,6 +7,7 @@ import ssl
 import socket
 import requests
 from html.parser import HTMLParser
+from multiprocessing.dummy import Pool
 from requests.adapters import HTTPAdapter
 
 from .taskbase import TaskBase
@@ -14,13 +15,19 @@ from .taskbase import TaskBase
 
 class WebTitle(TaskBase):
     '''获取网站title的任务
+    支持两种方式，一种是获取域名的title，只检测80和443端口，即http和https
+    一种是ip和port方式，尝试获取该IP的所有端口title
+    如果同时有domain和ip，默认只获取domain的
     参数：options
             {
                 'target':[{'ip':'xxx','port':[80,443,8080]},...]    #ip和port列表的字典列表格式
+            或者 'target':[{'domain':'xxx'},...]
             }
     任务结果：
         ip资产表的格式
         [{'ip': '218.19.148.193', 'port': [{'port': 80, 'title': 'xxx'}, {'port': 443, 'title': 'xxx'}]}]
+        域名表的格式
+        [{'domain': '218.19.148.193','title':['aaa','bbb']}]
     '''
 
     def __init__(self):
@@ -41,7 +48,8 @@ class WebTitle(TaskBase):
             'window.navigate[\s]*\([\'"](.*?)[\'"]\)',
             'location.href[\s]*=[\s]*[\'"](.*?)[\'"]',
         )
-
+        # 默认参数
+        self.threads = 10
         self.source = 'portscan'
         self.result_attr_keys = ('title',)
 
@@ -209,39 +217,76 @@ class WebTitle(TaskBase):
     def prepare(self, options):
         '''解析参数
         '''
-        for ip in options['target']:
-            if 'ip' not in ip or 'port' not in ip:
-                continue
-            ports = []
-            for port in ip['port']:
-                ports.append({'port': port})
+        self.org_id = self.get_option('org_id', options, self.org_id)
+        for host in options['target']:
+            if 'domain' in host:
+                self.target.append(host)
+            else:
+                if 'ip' not in host or 'port' not in host:
+                    continue
+                ports = []
+                for port in host['port']:
+                    ports.append({'port': port})
 
-            self.target.append({'ip': ip['ip'], 'port': ports})
-
-    def execute(self, ips):
-        '''获取主机端口上网站的title
+                self.target.append({'ip': host['ip'], 'port': ports})
+    def __execute_ip(self, ip):
+        '''ip参数执行线程
         '''
         protocols = ('http', 'https')
-        for ip in ips:
-            if 'ip' not in ip or 'port' not in ip:
-                continue
-            for port in ip['port']:
-                title = None
-                for protocol in protocols:
-                    title = self.__get_title(
-                        '{}://{}:{}'.format(protocol, ip['ip'], port['port']))
-                    if title:
-                        break
+        if 'ip' not in ip or 'port' not in ip:
+            return
+        for port in ip['port']:
+            title = None
+            for protocol in protocols:
+                title = self.__get_title(
+                    '{}://{}:{}'.format(protocol, ip['ip'], port['port']))
                 if title:
-                    port['title'] = title
+                    break
+            if title:
+                port['title'] = title
+
+    def __execute_domain(self, domain):
+        '''域名参数执行线程
+        '''
+        protocols = ('http', 'https')
+        if 'title' not in domain:
+            domain['title'] = []
+        for protocol in protocols:
+            title = self.__get_title(
+                '{}://{}'.format(protocol, domain['domain']))
+            if title:
+                domain['title'].append(title)
+
+    def execute_ip(self, ips):
+        '''获取主机端口上网站的title
+        ips的格式为IP格式:
+            [{'ip':192.168.1.1,'port':[{'port':80,'title':'aaa'},{'port':8080,'title':'bbb'},...]},...]
+        '''
+        pool = Pool(self.threads)
+        pool.map(self.__execute_ip, ips)
+        pool.close()
+        pool.join()
 
         return ips
+
+    def execute_domain(self, domains):
+        '''获取域名相关的网站title
+        domains为domain格式：
+            [{'domain':'test.com','ip':'1.2.3.4','title':['aaa','bbb']}...]
+        '''
+        pool = Pool(self.threads)
+        pool.map(self.__execute_domain, domains)
+        pool.close()
+        pool.join()
+
+        return domains
 
     def run(self, options):
         '''获取主机端口title的任务
         '''
         self.prepare(options)
-        self.execute(self.target)
+        self.execute_domain(self.target)
+        self.execute_ip(self.target)
         result = {'status': 'success', 'count': self.save_ip(self.target)}
 
         return result

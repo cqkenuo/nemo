@@ -2,6 +2,8 @@
 # coding:utf-8
 from . import dbutils
 from . import daobase
+import re
+import ipaddress
 
 
 class Ip(daobase.DAOBase):
@@ -31,37 +33,6 @@ class Ip(daobase.DAOBase):
             data['ip_int'] = self.ip2int(data['ip'])
         return super().update(Id, data)
 
-    def gets_by_range(self, ip_start, ip_end, query=None, fields=None, page=1, rows_per_page=None, order_by=None):
-        '''根据IP范围查询IP
-        ip_start:   起始ip值
-        ip_end:     结束ip值
-        query:      查询条件，字典格式如{'name':'hello','port':80}，多个条件默认是and
-        fields:     要返回的字段，列表格式('id','name','port')
-        page:       分页位置，从1开始
-        rows_per_page:  每页的记录数
-        order_by     :  排序字段
-        '''
-        sql = []
-        param = []
-        sql.append('select {} from {} '.format(
-            self.fill_fields(fields), self.table_name))
-        # IP范围
-        sql.append('where ip_int between %s and %s ')
-        if type(ip_start) == str:
-            param.append(self.ip2int(ip_start))
-            param.append(self.ip2int(ip_end))
-        else:
-            param.append(ip_start)
-            param.append(ip_end)
-        # 查询条件
-        if query and len(query) > 0:
-            sql.append(self.fill_where(query, param, pre_word='and'))
-        # 排序、分页
-        sql.append(self.fill_order_by_and_limit(
-            param, order_by, page, rows_per_page))
-
-        return dbutils.queryall(''.join(sql), param)
-
     def save_and_update(self, data):
         '''保存数据
         新增或更新一条数据
@@ -75,13 +46,102 @@ class Ip(daobase.DAOBase):
             self.copy_exist(data_update, data, 'status')
             self.copy_exist(data_update, data, 'org_id')
             self.copy_exist(data_update, data, 'location')
-
-            return obj[0]['id'] if self.update(obj[0]['id'], data_update) else 0
+            self.update(obj[0]['id'], data_update)
+            # if self.update(obj[0]['id'], data_update) else 0
+            return obj[0]['id']
         # 如果不存在，则生成新记录
         else:
             data_new = {'ip': data['ip']}
-            self.copy_key(data_new, data, 'status','alive')
+            self.copy_key(data_new, data, 'status', 'alive')
             self.copy_key(data_new, data, 'org_id')
             self.copy_key(data_new, data, 'location')
-
             return self.add(data_new)
+
+    def __fill_org_ip_port_where(self, org_id, ip, port):
+        '''根据指定的字段，生成查询SQL语句和参数
+        '''
+        sql = []
+        param = []
+        link_word = ' where '
+        if org_id:
+            sql.append(link_word)
+            sql.append(' org_id=%s ')
+            param.append(org_id)
+            link_word = ' and '
+        if ip:
+            # IP范围范围：是否是IP/掩码
+            ip_mask = r'^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\/\d{1,2}$'
+            try:
+                if re.match(ip_mask, ip):
+                    ip_network = ipaddress.ip_network(ip, strict=False)
+                    param.append(int(ip_network[0]))
+                    param.append(int(ip_network[-1]))
+                    sql.append(link_word)
+                    sql.append(' ip_int between %s and %s ')
+                else:
+                    param.append(ip)
+                    sql.append(link_word)
+                    sql.append(' ip=%s ')
+                link_word = ' and '
+            except Exception as e:
+                print(e)
+                pass
+        if port:
+            sql.append(link_word)
+            sql.append(' id in (select distinct ip_id from port where ')
+            port_link_word = ''
+            for p in port.split(','):
+                try:
+                    p_int = int(p)
+                    sql.append(port_link_word)
+                    sql.append(' port=%s')
+                    param.append(p_int)
+                    port_link_word = ' or '
+                except Exception as e:
+                    print(e)
+                    pass
+            sql.append(')')
+
+        return sql, param
+
+    def count_by_org_ip_port(self, org_id=None, ip=None, port=None):
+        '''统计记录总条数
+        org_id:     组织的ID
+        ip:         ip地址或ip/掩码,(192.168.1.5或172.16.0.0/16）
+        port:       端口号，多个端口号以,分隔('21,22,80,8080')
+        '''
+        sql = []
+        param = []
+        sql.append('select count(id) from {} '.format(self.table_name))
+        # 查询条件
+        where_sql, where_param = self.__fill_org_ip_port_where(
+            org_id, ip, port)
+        sql.extend(where_sql)
+        param.extend(where_param)
+
+        return dbutils.queryone(''.join(sql), param)
+
+    def gets_by_org_ip_port(self, org_id=None, ip=None, port=None, fields=None, page=1, rows_per_page=None, order_by=None):
+        '''根据组织机构、IP地址（包括范围）及端口的综合查询
+        org_id:     组织的ID
+        ip:         ip地址或ip/掩码,(192.168.1.5或172.16.0.0/16）
+        port:       端口号，多个端口号以,分隔('21,22,80,8080')
+        fields:     要返回的字段，列表格式('id','name','port')
+        page:       分页位置，从1开始
+        rows_per_page:  每页的记录数
+        order_by     :  排序字段
+        '''
+        sql = []
+        param = []
+        sql.append('select {} from {} '.format(
+            self.fill_fields(fields), self.table_name))
+        # 查询条件
+        where_sql, where_param = self.__fill_org_ip_port_where(
+            org_id, ip, port)
+        sql.extend(where_sql)
+        param.extend(where_param)
+        # 排序、分页
+        sql.append(self.fill_order_by_and_limit(
+            param, order_by, page, rows_per_page))
+
+        return dbutils.queryall(''.join(sql), param)

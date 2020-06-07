@@ -15,9 +15,9 @@ from instance import config
 
 #flask_app = Flask(__name__)
 ProductionConfig = config.ProductionConfig
-#flask_app.config.from_object(ProductionConfig)
-host = ProductionConfig.WEB_HOST#flask_app.config.get('WEB_HOST')
-port = ProductionConfig.WEB_PORT#flask_app.config.get('WEB_PORT')
+# flask_app.config.from_object(ProductionConfig)
+host = ProductionConfig.WEB_HOST  # flask_app.config.get('WEB_HOST')
+port = ProductionConfig.WEB_PORT  # flask_app.config.get('WEB_PORT')
 thread_pool = []
 
 
@@ -38,6 +38,11 @@ def main():
         print(e)
 
 
+def main_test():
+    web_app.run(host=host, port=port, debug=True)
+
+
 if __name__ == '__main__':
-    main()
+    # main()
+    main_test()
     # pass

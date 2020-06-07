@@ -71,7 +71,7 @@ class Nmap(TaskBase):
     def __nmap_scan(self, ip, port):
         '''调用nmap对指定IP和端口进行扫描
         '''
-        nmap_bin = ['nmap', self.tech, '-T4', '-oG','-',  '--open', '-n','--min-rate', str(self.rate)]
+        nmap_bin = ['nmap', self.tech, '-T4', '-oG','-',  '--open', '-n','--randomize-hosts','--min-rate', str(self.rate)]
         if not self.ping:
             nmap_bin.append('-Pn')
         # 两种方式：指定端口（包括全端口）和常用top端口（--top-ports 1000）
@@ -95,12 +95,13 @@ class Nmap(TaskBase):
     def prepare(self,options):
         '''解析参数
         '''
-        self.rate = options['rate'] if 'rate' in options else self.rate
-        self.tech = options['tech'] if 'tech' in options else self.tech
-        self.ping = options['ping'] if 'ping' in options else self.ping
+
         self.target = options['target']
         self.port = options['port']
-        self.org_id = None if 'org_id' not in options else options['org_id']
+        self.rate = self.get_option('rate',options,self.rate)
+        self.tech = self.get_option('tech',options,self.tech)
+        self.ping = self.get_option('ping',options,self.ping)
+        self.org_id = self.get_option('org_id',options,self.org_id)
 
     def execute(self):
         '''调用nmap执行扫描任务

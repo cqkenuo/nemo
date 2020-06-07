@@ -20,6 +20,16 @@ class TaskBase():
         self.source = 'taskbase'  # 属性来源
         self.target = []    # 任务目标
 
+
+    def get_option(self,key,options,default_option):
+        '''从options中获取参数值
+        '''
+        if key not in options:
+            return default_option
+
+        return options[key]
+
+
     def save_ip(self, data):
         '''保存ip资产相关的结果
         '''
@@ -59,7 +69,6 @@ class TaskBase():
         domain_app = Domain()
         doamin_attr_app = DomainAttr()
         result = {'domain': len(data)}
-
         for domain in data:
             if 'domain' not in domain:
                 continue
@@ -69,7 +78,7 @@ class TaskBase():
             domain_id = domain_app.save_and_update(domain)
             if domain_id > 0:
                 # 保存domain的属性
-                for attr_key in ('CNAME','A'):
+                for attr_key in ('CNAME','A','title'):
                     if  attr_key in domain:
                         for attr_value in domain[attr_key]:
                             domain_attr = {'r_id':domain_id,'source':self.source,'tag':attr_key,'content':attr_value}

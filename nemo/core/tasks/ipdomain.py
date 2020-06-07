@@ -6,6 +6,7 @@ import dns.resolver
 from .taskbase import TaskBase
 from nemo.core.database.ip import Ip
 from nemo.core.database.domain import Domain
+from nemo.common.utils.iputils import check_ip_or_domain
 
 
 class IpDomain(TaskBase):
@@ -77,18 +78,12 @@ class IpDomain(TaskBase):
 
         return None
 
-    def __check_ip(self, ip_or_domain):
-        '''检测传递的参数是IP域名，如果是IP则返回True,域名返回False
-        '''
-        p = r'^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$'
-        m = re.match(p, ip_or_domain)
-        return True if m else False
 
-    def __fetch_domain_ip(self, domain):
+    def fetch_domain_ip(self, domain):
         '''查询域名对应的IP，返回结果A是域名对应的IP地址
         如果返回结果包含了CNAME（域名的别名），返回的地址可能是CDN的地址
         '''
-        iplist = {'CNAME': [], 'A': []}
+        iplist = {'domain':domain,'CNAME': [], 'A': []}
         try:
             A = dns.resolver.query(domain, 'A')
             for i in A.response.answer:
@@ -120,9 +115,9 @@ class IpDomain(TaskBase):
     def prepare(self, options):
         '''解析参数
         '''
-        self.org_id = None if 'org_id' not in options else options['org_id']
+        self.org_id = self.get_option('org_id',options,self.org_id)
         for host in options['target']:
-            if self.__check_ip(host):
+            if check_ip_or_domain(host):
                 self.target.append({'ip': host})
             else:
                 self.target.append({'domain': host})
@@ -149,7 +144,7 @@ class IpDomain(TaskBase):
         for domain in domains:
             if 'domain' not in domain:
                 continue
-            domain.update(self.__fetch_domain_ip(domain['domain']))
+            domain.update(self.fetch_domain_ip(domain['domain']))
 
         return domains
 

@@ -4,6 +4,7 @@ from .taskbase import TaskBase
 from .nmap import Nmap
 from .ipdomain import IpDomain
 from .webtitle import WebTitle
+from nemo.common.utils.iputils import check_ip_or_domain
 
 
 class PortScan(TaskBase):
@@ -18,6 +19,9 @@ class PortScan(TaskBase):
             'tech':     '-sT'/'-sS'/'-sV'，扫描技术
             'webtitle': True/False，是否读取网站IP地址
             'iplocation':   True/False，是否获取IP归属地
+            'fofasearch':   True/False，是否调用fofa
+    注意：
+        fofasearch不由PortScan启动，由上一级调用者进行启动
         }
     '''
 
@@ -36,14 +40,31 @@ class PortScan(TaskBase):
     def prepare(self, options):
         '''解析参数
         '''
-        self.org_id = None if 'org_id' not in options else options['org_id']
-        self.webtitle = False if 'webtitle' not in options else options['webtitle']
-        self.iplocation = False if 'iplocation' not in options else options['iplocation']
+        self.org_id = self.get_option('org_id',options,self.org_id)
+        self.webtitle = self.get_option('webtitle',options,self.webtitle)
+        self.iplocation = self.get_option('iplocation',options,self.iplocation)
+        # 将域名转换为IP
+        target_ip = []
+        ipdomain = IpDomain()
+        for t in options['target']:
+            host = t.strip()
+            if check_ip_or_domain(host):
+                target_ip.append(host)
+            else:
+                # 获取域名IP信息
+                iplist = ipdomain.fetch_domain_ip(host)
+                # 保存到数据库
+                self.save_domain([iplist, ])
+                # 如果没有CDN，则将ip地址加入到扫描目标地址
+                if len(iplist['CNAME']) == 0 and len(iplist['A']) > 0:
+                    target_ip.extend(iplist['A'])
+
+        options['target'] = target_ip
 
     def run(self, options):
         '''执行端口扫描任务
         '''
-        self.prepare(options)       
+        self.prepare(options)
         # nmap扫描
         nmap_app = Nmap()
         nmap_app.prepare(options)
@@ -55,7 +76,7 @@ class PortScan(TaskBase):
         # 端口的title
         if self.webtitle == True:
             webtitle_app = WebTitle()
-            webtitle_app.execute(ip_ports)
+            webtitle_app.execute_ip(ip_ports)
         # 保存数据
         result = self.save_ip(ip_ports)
         result['status'] = 'success'

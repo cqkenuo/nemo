@@ -45,7 +45,8 @@ class AttrBase(daobase.DAOBase):
         if obj and len(obj) > 0:
             data_update = {}
             # 只更新update_datetime
-            return obj[0]['id'] if self.update(obj[0]['id'], data_update) else 0
+            self.update(obj[0]['id'], data_update)
+            return obj[0]['id'] #if self.update(obj[0]['id'], data_update) else 0
         # 如果不存在，则生成新记录
         else:
             data_new = {'r_id': data['r_id'], 'tag': data['tag'],
@@ -63,6 +64,7 @@ class PortAttr(AttrBase):
     def __init__(self):
         super().__init__()
         self.table_name = 'port_attr'
+        self.sort_order = 'tag,source'
 
 class DomainAttr(AttrBase):
     def __init__(self):

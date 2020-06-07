@@ -6,6 +6,9 @@ from .nmap import Nmap
 from .ipdomain import IpDomain
 from .webtitle import WebTitle
 from .portscan import PortScan
+from .fofa import Fofa
+from .subdomain import SubDmain
+from .domainscan import DomainScan
 
 celery_app = Celery('nemo', broker='amqp://', backend='rpc://')
 
@@ -13,6 +16,7 @@ celery_app = Celery('nemo', broker='amqp://', backend='rpc://')
 class UpdateTaskStatus(Task):
     '''在celery的任务异步完成时，显示完成状态和结果
     '''
+
     def on_success(self, retval, task_id, args, kwargs):
         print('task {} done: {}'.format(task_id, retval))
         return super(UpdateTaskStatus, self).on_success(retval, task_id, args, kwargs)
@@ -32,44 +36,79 @@ def add(x, y):
     time.sleep(r)
 
 
+TASK_ACTION = {
+    'nmap':         Nmap().run,
+    'iplocation':   IpDomain().run_iplocation,
+    'webtitle':   WebTitle().run,
+    'domainip':   IpDomain().run_domainip,
+    'portscan':   PortScan().run,
+    'fofasearch':   Fofa().run,
+    'subdomain':   SubDmain().run,
+    'domainscan':   DomainScan().run,
+}
+
+
+def new_task(action, options):
+    '''开始一个任务
+    '''
+    if action in TASK_ACTION:
+        task_run = TASK_ACTION.get(action)
+        result = task_run(options)
+        return result
+    else:
+        return {'status': 'fail', 'msg': 'no task'}
+
+
 @celery_app.task(base=UpdateTaskStatus)
-def nmap(task_name, options):
+def nmap(options):
     '''调用nmap进行端口扫描
     '''
-    task_app = Nmap()
-    result = task_app.run(options)
-    return result
+    return new_task('nmap',options)
 
 
 @celery_app.task(base=UpdateTaskStatus)
-def iplocation(task_name, options):
+def iplocation( options):
     '''获取ip的归属地
     '''
-    task_app = IpDomain()
-    result = task_app.run_iplocation(options)
-    return result
+    return new_task('iplocation',options)
+
 
 @celery_app.task(base=UpdateTaskStatus)
-def webtitle(task_name, options):
+def webtitle(options):
     '''获取title
     '''
-    task_app = WebTitle()
-    result = task_app.run(options)
-    return result
+    return new_task('webtitle',options)
+
 
 @celery_app.task(base=UpdateTaskStatus)
-def domainip(task_name, options):
+def domainip( options):
     '''查询域名IP
     '''
-    task_app = IpDomain()
-    result = task_app.run_domainip(options)
-    return result
+    return new_task('domain',options)
+
 
 @celery_app.task(base=UpdateTaskStatus)
-def portscan(task_name, options):
+def portscan(options):
     '''端口扫描综合任务
     '''
-    task_app = PortScan()
-    result = task_app.run(options)
-    return result
+    return new_task('portscan',options)
 
+
+@celery_app.task(base=UpdateTaskStatus)
+def fofasearch(options):
+    '''调用fofa API
+    '''
+    return new_task('fofasearch',options)
+
+
+@celery_app.task(base=UpdateTaskStatus)
+def subdomain(options):
+    '''调用Sublist3r收集子域名信息
+    '''
+    return new_task('submain',options)
+
+@celery_app.task(base=UpdateTaskStatus)
+def domainscan(options):
+    '''域名收集综合信息
+    '''
+    return new_task('domainscan',options)
