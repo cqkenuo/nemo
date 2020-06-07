@@ -5,66 +5,35 @@ from nemo.core.tasks.taskapi import TaskAPI
 
 taskapi = TaskAPI()
 
-
-def t1():
-    result = taskapi.start_task("add", args=[1, 2])
-    print(result)
-    return result['result']['task-id']
-
-
-def t11():
-    result = taskapi.start_task("nmap", kwargs={'task_name': 'nmap scan', 'options': {
-                                'target': ('192.168.110.0/24','218.19.148.193'), 'port': '--top 1000','ping':False,'tech':'-sS'}})
-    print(result)
+def test_portscan1():
+    options = {'target':['202.101.77.200',],'port':'--top-ports 1000',
+            'org_id':9,'rate':1000,'ping':False,'tech':'-sS','iplocation':True,'webtitle':True
+            }
+    fofasearch = True
+    #taskapi.start_task('portscan',kwargs ={'options':options})
+    if fofasearch:
+        taskapi.start_task('fofasearch',kwargs = {'options':options})
     
-    return result['result']['task-id']
+
+def test_domainscan():
+    options = {'target':['csg.cn',],
+            'org_id':9,'subdomain':True,'webtitle':False,'fofasearch':True,'portscan':False
+            }
+    taskapi.start_task('domainscan',kwargs ={'options':options})
+    fofasearch = True
+    if fofasearch:
+        taskapi.start_task('fofasearch',kwargs = {'options':options})
 
 
-def t2(task_id):
-    result = taskapi.get_task_info(task_id)
-    print(result)
-    result = taskapi.get_task_result(task_id)
-    print()
-    print(result)
-
-
-def t3():
-    result = taskapi.get_tasks()  # state='STARTED')
-    print(result)
-    print(len(result['result']))
-
-
-def t4(task_id):
-    result = taskapi.revoke_task(task_id)
-    print(result)
-
-def t5():
-    result = taskapi.start_task('iplocation',kwargs={'task_name':'get ip location','options':{'target':('218.19.148.193',)}})
-    print(result)
-
-
-def t7():
-    result = taskapi.start_task('webtitle',kwargs={'task_name':'get web title','options':{'target':
-        [{'ip':'218.19.148.193','port':[80,443]}]}})
-    print(result)
-
-def t8():
-    result = taskapi.start_task('domainip',kwargs={'task_name':'get domain ip','options':{'target':
-        ('www.sgcc.com.cn','www.csg.cn')}})
-    print(result)
-
-def t9():
-    result = taskapi.start_task("portscan", kwargs={'task_name': 'portscan', 'options': {
-                                'target': ('218.19.148.193',), 'port': '80,443,8080','org_id':9,'webtitle':True,'iplocation':True}})
+def test_portscan():
+    options = {'target':['192.168.3.0/24',],'port':'--top-ports 1000',
+            'org_id':38,'rate':5000,'ping':True,'tech':'-sS','iplocation':False,'webtitle':True
+            }
+    fofasearch = False
+    taskapi.start_task('portscan',kwargs ={'options':options})
+    if fofasearch:
+        taskapi.start_task('fofasearch',kwargs = {'options':options})
     
-    print(result)
 
-#task_id = t11()
-# t2(task_id)
-# t3()
-# time.sleep(1)
-# t4(task_id)
-#t5()
-#t7()
-#t8()
-t9()
+test_portscan()
+#test_domainscan()

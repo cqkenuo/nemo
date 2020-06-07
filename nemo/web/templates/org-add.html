@@ -1,17 +1,18 @@
 {% extends "base.html" %}
 {% block css %}
 {% endblock %}
-{% block content %}
 
+{% block content %}
 <main class="app-content">
     <div class="app-title">
         <div>
-            <h1><i class="fa fa-edit"></i>添加机构</h1>
+            <h1><i class="fa fa-edit"></i>添加组织</h1>
         </div>
         <ul class="app-breadcrumb breadcrumb">
             <li class="breadcrumb-item"><i class="fa fa-home fa-lg"></i></li>
             <li class="breadcrumb-item"><a href="/index">首页</a></li>
-            <li class="breadcrumb-item"><a href="#">添加机构</a></li>
+            <li class="breadcrumb-item"><a href="/org-list">组织列表</a></li>
+            <li class="breadcrumb-item active"><a href="#">添加组织</a></li>
         </ul>
     </div>
 
@@ -26,18 +27,23 @@
                         <form class="form-horizontal">
 
                             <div class="form-group row">
-                                <label class="control-label col-md-3">机构名称<span class="text-danger">*</span></label>
+                                <label class="control-label col-md-3">组织名称<span class="text-danger">*</span></label>
                                 <div class="col-md-8">
-                                    <input class="form-control col-md-7" title="机构名称" id="org_name" placeholder="国网公司/重庆供电公司/忠县供电分公司">
+                                    <input class="form-control col-md-7" title="组织名称" id="org_name" placeholder="国网公司/重庆供电公司/忠县供电分公司">
                                 </div> 
                             </div>
-
                             <div class="form-group row">
-                                <label class="control-label col-md-3">机构状态<span class="text-danger">*</span></label>
+                                <label class="control-label col-md-3">排序号<span class="text-danger">*</span></label>
                                 <div class="col-md-8">
-                                    <select class="form-control col-md-7" title="机构状态" id="org_status">
-                                        <option value="0">启&nbsp;&nbsp;用</option>
-                                        <option value="1">不&nbsp;启&nbsp;用</option>
+                                    <input class="form-control col-md-7" title="排序号" id="sort_order" value="100">
+                                </div> 
+                            </div>
+                            <div class="form-group row">
+                                <label class="control-label col-md-3">组织状态<span class="text-danger">*</span></label>
+                                <div class="col-md-8">
+                                    <select class="form-control col-md-7" title="组织状态" id="status">
+                                        <option value="enable">Enable</option>
+                                        <option value="disable">Disable</option>
                                     </select>
                                 </div> 
                             </div>
@@ -55,11 +61,11 @@
         </div>
     </div>
 </main>
+{% endblock %}
 
 {% block js %}
     <script src="static/js/sweetalert/sweetalert.min.js"></script>
     <script src="static/js/plugins/select2.min.js"></script>
     <script src="static/js/jquery/jquery.md5.js"></script>
     <script src="static/js/server/org-add.js"></script>
-{% endblock %}
 {% endblock %}

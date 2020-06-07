@@ -6,15 +6,15 @@ def test_org():
     org = Organization()
     #row_id = org.add(data={'org_name':'hnsgcc','status':'enable','sort_order':200})
     #print(row_id)
-    obj = org.get(9)
-    print(obj)
+    #obj = org.get(row_id)
+    #print(obj)
     #data={'org_name':'cqsgcc2','status':'disable','sort_order':300}
     #print(org.update(8,data))
     #print(org.get(8))
     #print(org.delete(6))
-    #print(org.gets(query={'org_name':'cqsgcc'},page=1,rows_per_page=2))
+    print(org.gets(query={'org_name':'cqsgcc'},page=1,rows_per_page=2))
     #print(org.count())
-    print(org.gets())
+    #print(org.gets())
 
 def test_ip():
     from nemo.core.database.ip import Ip
@@ -40,8 +40,8 @@ def test_port():
     #print(row_id)
     # obj = port.get(row_id)
     # print(obj)
-    #print(port.get(2))
-    print(port.gets(query={'ip_id':58}))
+    print(port.get(2))
+    print(port.gets(query={'port':80}))
 
 def test_port_attr():
     from nemo.core.database.attr import PortAttr
@@ -62,9 +62,9 @@ def test1():
 
 if __name__ == '__main__':
     #main()
-    test_org()
+    #test_org()
     #test_ip()
     #test_port()
     #test_port_attr()
-    #test1()
+    test1()
    

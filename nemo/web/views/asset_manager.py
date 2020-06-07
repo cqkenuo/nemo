@@ -1,143 +1,194 @@
 #!/usr/bin/env python3
-#coding:utf-8
+# coding:utf-8
 
-import re
-import IPy
-import json
-import hashlib
-import socket
-import requests
-from urllib.parse import urlparse
+from flask import render_template
+from flask import Blueprint
+from flask import request
+from flask import jsonify
 
-from flask import Flask, render_template, Blueprint, url_for, redirect, request, render_template_string,jsonify
 from .authenticate import login_check
-from core.database.ip import Ip
-from core.database.organization import Organization
-from core.database.domain import Domain
-from core.database.port import Port
+from nemo.core.database.ip import Ip
+from nemo.core.database.port import Port
+from nemo.core.database.domain import Domain
+from nemo.core.database.organization import Organization
+from nemo.core.database.attr import IpAttr, PortAttr, DomainAttr
 
 asset_manager = Blueprint('asset_manager', __name__)
 
 
-class AssetListParser(object):
+class AssertInfoParser():
+    '''资产信息（IP、域名）聚合
     '''
-    资产列表数据解析
-        因为资产列表采用混合模式输入，可以输入域名、IP地址和网段，因此需要根据不同的输入做解析。
-        1. 列表中输入域名时
-        2. 输入的是IP时，如果不是私有地址时反查IP对应的域名，返回当前使用的域名，生成C段地址给扫描器；
-        3. 输入网段时，由网段生成IP地址生成器返回给扫描器。
-        4. 获取地理位置
-    '''
-    def __init__(self, asset_form_data):
-        self.ip_table = Ip()
-        self.org_table = Organization()
-        self.domain_table = Domain()
-        self.get_form_data(asset_form_data)
-        self.req_form_parser()
 
+    def __init__(self):
+        super().__init__()
 
-    def get_form_data(self, data):
-        self.asset_list = data.get('asset_list')
-        self.asset_type = data.get('asset_type')
-        #self.status = asset_form_data.get('status')
-        self.org_name = data.get('org_name').encode('utf-8')
-
-    def req_form_parser(self):
+    def __get_ip_domain(self, ip):
+        '''查询IP关联的域名
         '''
-            表单参数处理
+        domain_set = set()
+        domain_attrs_obj = DomainAttr().gets(query={'tag': 'A', 'content': ip})
+        for domain_attr_obj in domain_attrs_obj:
+            domain_obj = Domain().get(domain_attr_obj['r_id'])
+            if domain_attr_obj:
+                domain_set.add(domain_obj['domain'])
+
+        return domain_set
+
+    def get_ip_port_info(self, ip, ip_id):
+        '''获取IP端口属性，并生成port、title、banner聚合信息
         '''
-        try:
-            for asset in self.asset_list:
-                '''
-                    资产类型是IP地址或网段处理并存入IP表
-                '''
-                if self.asset_type == 'ip':
-                    if re.findall('^(?:\d{1,3}\.){3}\d{1,3}$', asset):
-                        ip = re.findall('^(?:\d{1,3}\.){3}\d{1,3}$', asset)[0]
-                    elif re.findall('^(?:\d{1,3}\.){3}\d{1,3}/\d{1,2}$', asset):
-                        ip = re.findall('^(?:\d{1,3}\.){3}\d{1,3}/\d{1,2}$', asset)[0]
-                    self.ip_table.add(data = {'ip': ip, 'org_id': self.get_org_id(),'status': 'alive'})
-                elif self.asset_type == 'domain':
-                    '''
-                        资产为domain时，检查输入并将其存入domain表
-                    '''
-                    domain = urlparse(asset).netloc if urlparse(asset).netloc else urlparse(asset).path.split('/')[0]
-                    print(self.domain_table.add(data = {'domain': domain.strip(),'org_id': self.get_org_id()}))
-        except Exception as e:
-            print(e)
+        port_list = []
+        title_set = set()
+        banner_set = set()
+        ports_attr_info = []
 
+        ports_obj = Port().gets(query={'ip_id': ip_id})
+        for port_obj in ports_obj:
+            port_list.append(port_obj['port'])
+            # 获取端口属性
+            port_attrs_obj = PortAttr().gets(query={'r_id': port_obj['id']})
+            FIRST_ROW = True
+            # 每个端口的一个属性生成一行记录
+            # 第一行记录显示IP和PORT，其它行保持为空（方便查看）
+            for port_attr_obj in port_attrs_obj:
+                pai = {}
+                if FIRST_ROW:
+                    pai.update(ip=ip, port=port_obj['port'])
+                    FIRST_ROW = False
+                else:
+                    pai.update(ip='', port='')
+                pai.update(id=port_attr_obj['id'], tag=port_attr_obj['tag'], content=port_attr_obj['content'], source=port_attr_obj['source'],
+                           update_datetime=port_attr_obj['update_datetime'].strftime('%Y-%m-%d %H:%M'))
+                # 更新集合
+                if port_attr_obj['tag'] == 'title':
+                    title_set.add(port_attr_obj['content'])
+                elif port_attr_obj['tag'] in ('banner', 'tag', 'server'):
+                    banner_set.add(port_attr_obj['content'])
 
-    def get_org_id(self):
+                ports_attr_info.append(pai)
+
+        return port_list, title_set, banner_set, ports_attr_info
+
+    def get_ip_info(self, Id):
+        '''聚合一个IP的详情
         '''
-            查询机构ID
-            如果机构表没有该机构，则将其插入表中并返回org_id
-            :return: org_id
+        ip_info = {}
+        # 获取IP
+        ip_obj = Ip().get(Id)
+        if not ip_obj:
+            return None
+        ip_info.update(ip=ip_obj['ip'], location=ip_obj['location'], status=ip_obj['status'], create_datetime=ip_obj['create_datetime'].strftime(
+            '%Y-%m-%d %H:%M'), update_datetime=ip_obj['update_datetime'].strftime('%Y-%m-%d %H:%M'))
+        # 获取组织名称
+        if ip_obj['org_id']:
+            organziation__obj = Organization().get(ip_obj['org_id'])
+            if organziation__obj:
+                ip_info.update(organization=organziation__obj['org_name'])
+        else:
+            ip_info.update(Organization='')
+        # 端口、标题、banner、端口详情
+        port_list, title_set, banner_set, ports_attr_info = self.get_ip_port_info(
+            ip_obj['ip'], ip_obj['id'])
+        ip_info.update(port_attr=ports_attr_info)
+        ip_info.update(title=list(title_set))
+        ip_info.update(banner=list(banner_set))
+        ip_info.update(port=port_list)
+        # IP关联的域名
+        domain_set = self.__get_ip_domain(ip_obj['ip'])
+        ip_info.update(domain=list(domain_set))
+
+        return ip_info
+
+    def get_domain_info(self, Id):
+        '''聚合一个DOMAIN的详情
         '''
-        row = self.org_table.gets(query = {'org_name': self.org_name}, page = 1, rows_per_page = 1)
-        return row[0]['id'] if row else self.org_table.add(data = {'org_name' : self.org_name, 'status':'enable'})
+        domain_info = {}
+        # 获取DOMAIN
+        domain_obj = Domain().get(Id)
+        if not domain_obj:
+            return None
+        domain_info.update(
+            domain=domain_obj['domain'], create_datetime=domain_obj['create_datetime'].strftime('%Y-%m-%d %H:%M'), update_datetime=domain_obj['update_datetime'].strftime('%Y-%m-%d %H:%M'))
+        # 获取组织名称
+        if domain_obj['org_id']:
+            organziation__obj = Organization().get(domain_obj['org_id'])
+            if organziation__obj:
+                domain_info.update(organization=organziation__obj['org_name'])
+        else:
+            domain_info.update(organization='')
+        domain_attrs_obj = DomainAttr().gets(query={'r_id': domain_obj['id']})
+        # 获取域名的属性信息：title和ip
+        title_set = set()
+        ip_set = set()
+        for domain_attr_obj in domain_attrs_obj:
+            if domain_attr_obj['tag'] == 'title':
+                title_set.add(domain_attr_obj['content'])
+            elif domain_attr_obj['tag'] == 'A':
+                ip_set.add(domain_attr_obj['content'])
+        domain_info.update(title=list(title_set))
+        # 获取域名关联的IP端口详情：
+        port_set = set()
+        ip_port_list = []
+        for domain_ip in ip_set:
+            ip_obj = Ip().gets(query={'ip': domain_ip})
+            if ip_obj and len(ip_obj) > 0:
+                p, _, _, pai = self.get_ip_port_info(
+                    ip_obj[0]['ip'], ip_obj[0]['id'])
+                port_set.update(p)
+                ip_port_list.extend(pai)
+        domain_info.update(ip=list(ip_set))
+        domain_info.update(port=list(port_set))
+        domain_info.update(port_attr=ip_port_list)
+
+        return domain_info
 
 
-@asset_manager.route('/asset-add', methods = ['GET', 'POST'])
-#@login_check
-def asset_add_view():
-    '''
-        添加资产
-        1. 添加IP或域名地址
-        2. 增加通过excel模板导入
-    '''
-    if request.method == 'POST':
-        asset_form_data = {
-            'org_name': request.form['org_name'],
-            'asset_list': request.form['asset_list'].split('\n'),
-            'asset_type': 'domain' if request.form['asset_type'] == '1' else 'ip'
-        }
-        AssetListParser(asset_form_data)
-
-    return render_template('asset-add.html')
-
-@asset_manager.route('/ip-list', methods = ['GET', 'POST'])
-#@login_check
+@asset_manager.route('/ip-list', methods=['GET', 'POST'])
+# @login_check
 def ip_asset_view():
-    '''
-        IP资产列表展示
+    '''IP资产列表展示
     '''
     if request.method == 'GET':
-        return render_template('ip-list.html')
-    
+        org_table = Organization()
+        org_list = org_table.gets()
+        print(org_list)
+        return render_template('ip-list.html', org_list=org_list)
+
     ip_table = Ip()
     port_table = Port()
     org_table = Organization()
     ip_list = []
     json_data = {}
     index = 1
-    
-    org_name = request.form.get('org_name')
-    ip_addr = request.form.get('ip_address')
-    port = request.form.get('port')
-    if(org_name or ip_addr or port):
-        pass
+
+
     try:
         draw = int(request.form.get('draw'))
         start = int(request.form.get('start'))
         length = int(request.form.get('length'))
-        search_key = request.form.get('search[value]')
-        order_column = request.form.get('order[0][column]')  # 排序字段索引
-        order_column = request.form.get('order[0][dir]')  #排序規則：ase/desc
-        for ip_row in ip_table.gets(page = (start//length) + 1, rows_per_page = length):
+        org_name = request.form.get('org_name')
+        ip_address = request.form.get('ip_address')
+        port = request.form.get('port')
+
+        ips = ip_table.gets_by_org_ip_port(
+            org_name, ip_address, port, page=(start//length)+1, rows_per_page=length)
+
+        for ip_row in ips:
             ip_list.append({
-                'id':ip_row['id'],        #表内序号
-                "index":index+start,              #显示序号
-                "org_name":org_table.get(int(ip_row['org_id']))['org_name'] if ip_row['org_id'] else '',
-                "ip":ip_row['ip'],
-                "status":ip_row['status'],
-                "location":ip_row['location'],
-                "port":'\n'.join(['{}:{}'.format(row['port'], row['status']) for row in port_table.gets(query = {'ip_id': ip_row['id']})]),
-                "create_time":str(ip_row['create_datetime']),
-                "update_time":str(ip_row['update_datetime'])
+                'id': ip_row['id'],  # 表内序号
+                "index": index+start,  # 显示序号
+                "org_name": org_table.get(int(ip_row['org_id']))['org_name'] if ip_row['org_id'] else '',
+                "ip": ip_row['ip'],
+                "status": ip_row['status'],
+                "location": ip_row['location'],
+                "port": ', '.join(['{}'.format(row['port']) for row in port_table.gets(query={'ip_id': ip_row['id']})]),
+                "create_time": str(ip_row['create_datetime']),
+                "update_time": str(ip_row['update_datetime'])
             })
             index += 1
 
-        count = ip_table.count()
+        count = ip_table.count_by_org_ip_port(org_name, ip_address, port)
         json_data = {
             'draw': draw,
             'recordsTotal': count,
@@ -148,50 +199,118 @@ def ip_asset_view():
     except Exception as e:
         print(e)
 
-    return render_template_string(json.dumps(json_data))
+    return jsonify(json_data)
 
-@asset_manager.route('/domain-list', methods = ['GET', 'POST'])
-#@login_check
-def domain_asset_view():
+
+@asset_manager.route('/ip-info', methods=['GET'])
+# @login_check
+def ip_asset_info_view():
+    '''显示一个IP地址的详细信息
     '''
-        页面上显示域名资产，datatable前端ajax请求进行分页
+    ip = request.args.get('ip')
+    ips = Ip().gets(query={'ip': ip})
+    if ips and len(ips) > 0:
+        ip_info = AssertInfoParser().get_ip_info(ips[0]['id'])
+    else:
+        ip_info = None
+
+    return render_template('ip-info.html', ip_info=ip_info)
+
+
+@asset_manager.route('/port-attr-delete/<int:port_attr_id>', methods=['POST'])
+# @login_check
+def delete_port_attr_view(port_attr_id):
+    '''删除一个端口的属性记录
+    '''
+    rows = PortAttr().delete(port_attr_id)
+
+    return jsonify({'status': 'success', 'msg': rows})
+
+
+@asset_manager.route('/ip-delete/<int:ip_id>', methods=['POST'])
+# @login_check
+def delete_ip_view(ip_id):
+    '''删除一个IP
+    '''
+    rows = Ip().delete(ip_id)
+
+    return jsonify({'status': 'success', 'msg': rows})
+
+
+
+@asset_manager.route('/domain-list', methods=['GET', 'POST'])
+# @login_check
+def domain_asset_view():
+    '''页面上显示域名资产，datatable前端ajax请求进行分页
     '''
     if request.method == 'GET':
-        return render_template('domain-list.html')
+        org_table = Organization()
+        org_list = org_table.gets()
+        return render_template('domain-list.html', org_list=org_list)
+
     domain_list = []
-    json_data = {}
     ip_table = Ip()
     org_table = Organization()
     domain_table = Domain()
+    domain_attr_table = DomainAttr()
     index = 1
 
-    draw = int(request.form.get('draw'))
-    start = int(request.form.get('start'))
-    length = int(request.form.get('length'))
-    search_key = request.form.get('search[value]')
-    order_column = request.form.get('order[0][column]')  # 排序字段索引
-    order_column = request.form.get('order[0][dir]')  #排序規則：ase/desc
-
-    count = domain_table.count()
     try:
-        for domain_row in domain_table.gets(page = start/length + 1, rows_per_page = length):
+        draw = int(request.form.get('draw'))
+        start = int(request.form.get('start'))
+        length = int(request.form.get('length'))
+        org_name = request.form.get('org_name')
+        ip_address = request.form.get('ip_address')
+        domain_address = request.form.get('domain_address')
+
+        domains = domain_table.gets_by_org_domain_ip(
+            org_name, domain_address, ip_address, page=start//length+1, rows_per_page=length)
+        for domain_row in domains:
+            ips = domain_attr_table.gets(query={'tag':'A','r_id':domain_row['id']})
             domain_list.append({
-                'id':domain_row['id'], 
-                "index":index+start,
+                'id': domain_row['id'],
+                "index": index+start,
                 "domain": domain_row['domain'],
-                "ip":'\n'.join([ip_row['ip'] for ip_row in ip_table.gets(query={'org_id': domain_row['org_id']})]),
-                "title": 'Title_test',
-                "org_name":org_table.get(int(domain_row['org_id']))['org_name'] if domain_row['org_id'] else '',
-                "create_time":str(domain_row['create_datetime']),
-                "update_time":str(domain_row['update_datetime'])
+                "ip": ',&nbsp;'.join(set(['<a href="/ip-info?ip={0}">{0}</a>'.format(ip_row['content']) for ip_row in ips])),
+                "org_name": org_table.get(int(domain_row['org_id']))['org_name'] if domain_row['org_id'] else '',
+                "create_time": str(domain_row['create_datetime']),
+                "update_time": str(domain_row['update_datetime'])
             })
             index += 1
+        count = domain_table.count_by_org_domain_ip(
+            org_name, domain_address, ip_address)
         json_data = {
-                'draw': draw,
-                'recordsTotal': count,
-                'recordsFiltered': count,
-                'data': domain_list
-            }
+            'draw': draw,
+            'recordsTotal': count,
+            'recordsFiltered': count,
+            'data': domain_list
+        }
     except Exception as e:
         print(e)
-    return render_template_string(json.dumps(json_data))
+        pass
+
+    return jsonify(json_data)
+
+
+@asset_manager.route('/domain-info', methods=['GET'])
+# @login_check
+def domain_asset_info_view():
+    '''显示一个DOMAIN的详细信息
+    '''
+    domain = request.args.get('domain')
+    domains = Domain().gets(query={'domain': domain})
+    if domains and len(domains) > 0:
+        domain_info = AssertInfoParser().get_domain_info(domains[0]['id'])
+    else:
+        domain_info = None
+
+    return render_template('domain-info.html', domain_info=domain_info)
+
+@asset_manager.route('/domain-delete/<int:domain_id>', methods=['POST'])
+# @login_check
+def delete_domain_view(domain_id):
+    '''删除一个DOMAIN
+    '''
+    rows = Domain().delete(domain_id)
+
+    return jsonify({'status': 'success', 'msg': rows})

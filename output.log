@@ -1,0 +1,96 @@
+2020-06-06 14:21:11,510 - ERROR - dbutils.py#queryall_process():122 - main - Traceback (most recent call last):
+  File "/Users/hancool/01infomation/nemo/nemo/core/database/dbutils.py", line 118, in queryall_process
+    cur.execute(sql, param)
+  File "/Users/hancool/Library/Python/3.7/lib/python/site-packages/DBUtils/SteadyDB.py", line 605, in tough_method
+    result = method(*args, **kwargs)  # try to execute
+  File "/Users/hancool/Library/Python/3.7/lib/python/site-packages/pymysql/cursors.py", line 170, in execute
+    result = self._query(query)
+  File "/Users/hancool/Library/Python/3.7/lib/python/site-packages/pymysql/cursors.py", line 328, in _query
+    conn.query(q)
+  File "/Users/hancool/Library/Python/3.7/lib/python/site-packages/pymysql/connections.py", line 517, in query
+    self._affected_rows = self._read_query_result(unbuffered=unbuffered)
+  File "/Users/hancool/Library/Python/3.7/lib/python/site-packages/pymysql/connections.py", line 732, in _read_query_result
+    result.read()
+  File "/Users/hancool/Library/Python/3.7/lib/python/site-packages/pymysql/connections.py", line 1075, in read
+    first_packet = self.connection._read_packet()
+  File "/Users/hancool/Library/Python/3.7/lib/python/site-packages/pymysql/connections.py", line 684, in _read_packet
+    packet.check_error()
+  File "/Users/hancool/Library/Python/3.7/lib/python/site-packages/pymysql/protocol.py", line 220, in check_error
+    err.raise_mysql_exception(self._data)
+  File "/Users/hancool/Library/Python/3.7/lib/python/site-packages/pymysql/err.py", line 109, in raise_mysql_exception
+    raise errorclass(errno, errval)
+pymysql.err.ProgrammingError: (1064, "You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near '-1' at line 1")
+
+2020-06-06 14:21:11,510 - ERROR - dbutils.py#queryall_process():123 - main - [sql]:select * from organization  order by sort_order desc,org_name limit %s,%s [param]:[0, -1]
+2020-06-06 14:21:27,022 - ERROR - dbutils.py#queryall_process():122 - main - Traceback (most recent call last):
+  File "/Users/hancool/01infomation/nemo/nemo/core/database/dbutils.py", line 118, in queryall_process
+    cur.execute(sql, param)
+  File "/Users/hancool/Library/Python/3.7/lib/python/site-packages/DBUtils/SteadyDB.py", line 605, in tough_method
+    result = method(*args, **kwargs)  # try to execute
+  File "/Users/hancool/Library/Python/3.7/lib/python/site-packages/pymysql/cursors.py", line 170, in execute
+    result = self._query(query)
+  File "/Users/hancool/Library/Python/3.7/lib/python/site-packages/pymysql/cursors.py", line 328, in _query
+    conn.query(q)
+  File "/Users/hancool/Library/Python/3.7/lib/python/site-packages/pymysql/connections.py", line 517, in query
+    self._affected_rows = self._read_query_result(unbuffered=unbuffered)
+  File "/Users/hancool/Library/Python/3.7/lib/python/site-packages/pymysql/connections.py", line 732, in _read_query_result
+    result.read()
+  File "/Users/hancool/Library/Python/3.7/lib/python/site-packages/pymysql/connections.py", line 1075, in read
+    first_packet = self.connection._read_packet()
+  File "/Users/hancool/Library/Python/3.7/lib/python/site-packages/pymysql/connections.py", line 684, in _read_packet
+    packet.check_error()
+  File "/Users/hancool/Library/Python/3.7/lib/python/site-packages/pymysql/protocol.py", line 220, in check_error
+    err.raise_mysql_exception(self._data)
+  File "/Users/hancool/Library/Python/3.7/lib/python/site-packages/pymysql/err.py", line 109, in raise_mysql_exception
+    raise errorclass(errno, errval)
+pymysql.err.ProgrammingError: (1064, "You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near '-1' at line 1")
+
+2020-06-06 14:21:27,023 - ERROR - dbutils.py#queryall_process():123 - main - [sql]:select * from organization  order by sort_order desc,org_name limit %s,%s [param]:[0, -1]
+2020-06-07 23:39:36,633 - ERROR - dbutils.py#queryall_process():122 - main - Traceback (most recent call last):
+  File "/Users/hancool/01infomation/nemo/nemo/core/database/dbutils.py", line 118, in queryall_process
+    cur.execute(sql, param)
+  File "/Users/hancool/Library/Python/3.7/lib/python/site-packages/DBUtils/SteadyDB.py", line 605, in tough_method
+    result = method(*args, **kwargs)  # try to execute
+  File "/Users/hancool/Library/Python/3.7/lib/python/site-packages/pymysql/cursors.py", line 170, in execute
+    result = self._query(query)
+  File "/Users/hancool/Library/Python/3.7/lib/python/site-packages/pymysql/cursors.py", line 328, in _query
+    conn.query(q)
+  File "/Users/hancool/Library/Python/3.7/lib/python/site-packages/pymysql/connections.py", line 517, in query
+    self._affected_rows = self._read_query_result(unbuffered=unbuffered)
+  File "/Users/hancool/Library/Python/3.7/lib/python/site-packages/pymysql/connections.py", line 732, in _read_query_result
+    result.read()
+  File "/Users/hancool/Library/Python/3.7/lib/python/site-packages/pymysql/connections.py", line 1075, in read
+    first_packet = self.connection._read_packet()
+  File "/Users/hancool/Library/Python/3.7/lib/python/site-packages/pymysql/connections.py", line 684, in _read_packet
+    packet.check_error()
+  File "/Users/hancool/Library/Python/3.7/lib/python/site-packages/pymysql/protocol.py", line 220, in check_error
+    err.raise_mysql_exception(self._data)
+  File "/Users/hancool/Library/Python/3.7/lib/python/site-packages/pymysql/err.py", line 109, in raise_mysql_exception
+    raise errorclass(errno, errval)
+pymysql.err.ProgrammingError: (1064, "You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near '%'csg.cn'%  order by domain limit 0,20' at line 1")
+
+2020-06-07 23:39:36,633 - ERROR - dbutils.py#queryall_process():123 - main - [sql]:select * from domain  where  org_id=%s  and  domain like %%%s%%  order by domain limit %s,%s [param]:['9', 'csg.cn', 0, 20]
+2020-06-07 23:50:22,849 - ERROR - dbutils.py#queryall_process():122 - main - Traceback (most recent call last):
+  File "/Users/hancool/01infomation/nemo/nemo/core/database/dbutils.py", line 118, in queryall_process
+    cur.execute(sql, param)
+  File "/Users/hancool/Library/Python/3.7/lib/python/site-packages/DBUtils/SteadyDB.py", line 605, in tough_method
+    result = method(*args, **kwargs)  # try to execute
+  File "/Users/hancool/Library/Python/3.7/lib/python/site-packages/pymysql/cursors.py", line 170, in execute
+    result = self._query(query)
+  File "/Users/hancool/Library/Python/3.7/lib/python/site-packages/pymysql/cursors.py", line 328, in _query
+    conn.query(q)
+  File "/Users/hancool/Library/Python/3.7/lib/python/site-packages/pymysql/connections.py", line 517, in query
+    self._affected_rows = self._read_query_result(unbuffered=unbuffered)
+  File "/Users/hancool/Library/Python/3.7/lib/python/site-packages/pymysql/connections.py", line 732, in _read_query_result
+    result.read()
+  File "/Users/hancool/Library/Python/3.7/lib/python/site-packages/pymysql/connections.py", line 1075, in read
+    first_packet = self.connection._read_packet()
+  File "/Users/hancool/Library/Python/3.7/lib/python/site-packages/pymysql/connections.py", line 684, in _read_packet
+    packet.check_error()
+  File "/Users/hancool/Library/Python/3.7/lib/python/site-packages/pymysql/protocol.py", line 220, in check_error
+    err.raise_mysql_exception(self._data)
+  File "/Users/hancool/Library/Python/3.7/lib/python/site-packages/pymysql/err.py", line 109, in raise_mysql_exception
+    raise errorclass(errno, errval)
+pymysql.err.ProgrammingError: (1064, "You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near '%'csg.cn'%  order by domain limit 0,20' at line 1")
+
+2020-06-07 23:50:22,849 - ERROR - dbutils.py#queryall_process():123 - main - [sql]:select * from domain  where  domain like %%%s%%  order by domain limit %s,%s [param]:['csg.cn', 0, 20]
