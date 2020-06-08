@@ -2,6 +2,51 @@ $(function () {
     $("#search").click(function () {
         $("#ip_table").DataTable().draw(true);
     });
+    $("#create_task").click(function () {
+        $('#newTask').modal('toggle');
+    });
+    $("#start_task").click(function () {
+        const target = $('#text_target').val();
+        var port = $('#input_port').val();
+        var rate = $('#input_rate').val();
+        if (!target) {
+            swal('Warning', '请至少输入一个Target', 'error');
+            return;
+        }
+        if (!port) port = "--top-ports 1000";
+        if (!rate) rate = 5000;
+        $.post("/task-start-portscan",
+            {
+                "target": target,
+                "port": port,
+                'rate': rate,
+                'nmap_tech': $('#select_tech').val(),
+                'org_id': $('#select_org').val(),
+                'iplocation': $('#checkbox_iplocation').is(":checked"),
+                'webtitle': $('#checkbox_webtitle').is(":checked"),
+                'ping': $('#checkbox_ping').is(":checked"),
+                'fofasearch': $('#checkbox_fofasearch').is(":checked")
+            }, function (data, e) {
+                if (e === "success" && data['status'] == 'success') {
+                    swal({
+                        title: "新建任务成功！",
+                        text: "TaskId:" + data['result']['task-id'],
+                        type: "success",
+                        confirmButtonText: "确定",
+                        confirmButtonColor: "#41b883",
+                        closeOnConfirm: true,
+                    },
+                        function () {
+                            $('#newTask').modal('hide');
+                        });
+                } else {
+                    swal('Warning', "添加任务失败!", 'error');
+                }
+            });
+
+    });
+
+
 
     $('#ip_table').DataTable(
         {

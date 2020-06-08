@@ -52,7 +52,7 @@ class Domain(daobase.DAOBase):
             sql.append(
                 ' id in (select distinct r_id from domain_attr where tag="A" and content=%s)')
             param.append(ip)
-        print(''.join(sql))
+
         return sql, param
 
     def count_by_org_domain_ip(self, org_id=None, domain=None, ip=None):
