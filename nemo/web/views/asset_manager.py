@@ -152,7 +152,6 @@ def ip_asset_view():
     if request.method == 'GET':
         org_table = Organization()
         org_list = org_table.gets()
-        print(org_list)
         return render_template('ip-list.html', org_list=org_list)
 
     ip_table = Ip()

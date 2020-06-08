@@ -2,7 +2,42 @@ $(function () {
     $("#search").click(function () {
         $("#domain_table").DataTable().draw(true);
     });
+    $("#create_task").click(function () {
+        $('#newTask').modal('toggle');
+    });
+    $("#start_task").click(function () {
+        const target = $('#text_target').val();
+        if (!target) {
+            swal('Warning', '请至少输入一个Target', 'error');
+            return;
+        }
+        $.post("/task-start-domainscan",
+            {
+                "target": target,
+                'org_id': $('#select_org').val(),
+                'subdomain': $('#checkbox_subdomain').is(":checked"),
+                'webtitle': $('#checkbox_webtitle').is(":checked"),
+                'portscan': $('#checkbox_portscan').is(":checked"),
+                'fofasearch': $('#checkbox_fofasearch').is(":checked")
+            }, function (data, e) {
+                if (e === "success" && data['status'] == 'success') {
+                    swal({
+                        title: "新建任务成功！",
+                        text: "TaskId:" + data['result']['task-id'],
+                        type: "success",
+                        confirmButtonText: "确定",
+                        confirmButtonColor: "#41b883",
+                        closeOnConfirm: true,
+                    },
+                        function () {
+                            $('#newTask').modal('hide');
+                        });
+                } else {
+                    swal('Warning', "添加任务失败!", 'error');
+                }
+            });
 
+    });
     $('#domain_table').DataTable(
         {
             "paging": true,
@@ -48,6 +83,7 @@ $(function () {
                 { data: "update_time", title: "更新时间", width: "15%" },
                 {
                     title: "操作",
+                    width:"10%",
                     "render": function (data, type, row, meta) {
                         var strDelete = "<a href=javascript:delete_domain(" + row.id + ")><i class='fa fa-pencil'></i><span>删除</span></a>";
                         return strDelete;

@@ -16,18 +16,18 @@ def test_portscan1():
     
 
 def test_domainscan():
-    options = {'target':['csg.cn',],
-            'org_id':9,'subdomain':True,'webtitle':False,'fofasearch':True,'portscan':False
+    options = {'target':['cq.sgcc.com.cn',],
+            'org_id':9,'subdomain':True,'webtitle':False,'fofasearch':False,'portscan':False
             }
-    taskapi.start_task('domainscan',kwargs ={'options':options})
-    fofasearch = True
+    taskapi.start_task('domainscan_with_portscan',kwargs ={'options':options})
+    fofasearch = False
     if fofasearch:
         taskapi.start_task('fofasearch',kwargs = {'options':options})
 
 
 def test_portscan():
-    options = {'target':['192.168.3.0/24',],'port':'--top-ports 1000',
-            'org_id':38,'rate':5000,'ping':True,'tech':'-sS','iplocation':False,'webtitle':True
+    options = {'target':['39.100.112.103',],'port':'1-65535',
+            'org_id':38,'rate':5000,'ping':False,'tech':'-sV','iplocation':True,'webtitle':True
             }
     fofasearch = False
     taskapi.start_task('portscan',kwargs ={'options':options})
@@ -35,5 +35,5 @@ def test_portscan():
         taskapi.start_task('fofasearch',kwargs = {'options':options})
     
 
-test_portscan()
-#test_domainscan()
+#test_portscan()
+test_domainscan()

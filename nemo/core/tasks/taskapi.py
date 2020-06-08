@@ -64,7 +64,8 @@ class TaskAPI():
         api = 'api/tasks'
         url = '{}/{}'.format(self.api_host, api)
         params = {}
-        params['limit'] = limit
+        if limit:
+            params['limit'] = limit
         if state:
             params['state'] = state
         if task_name:

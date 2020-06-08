@@ -61,6 +61,75 @@
                   <table class="table table-hover table-bordered dataTable no-footer" id="domain_table" role="grid"
                     aria-describedby="domain_asset_info">
                   </table>
+                  <!-- 模态对话框：任务-->
+                  <div class="modal fade" id="newTask" tabindex="-1" role="dialog" aria-labelledby="myModalLabel"
+                    aria-hidden="true">
+                    <div class="modal-dialog">
+                      <div class="modal-content">
+                        <div class="modal-header card-header">
+                          <h4 class="modal-title" id="myModalLabel">
+                            新建任务
+                          </h4>
+                        </div>
+                        <div class="modal-body">
+                          <form class="form-horizontal" role="form">
+                            <div class="form-group">
+                              <label for="text_target">
+                                <b><span class="text-danger">*</span>Targets:</b>
+                              </label>
+                              <textarea class="form-control" id="text_target" rows="4"
+                                placeholder="www.google.com&#10;github.com"></textarea>
+                              <label class="col-form-label">
+                                <b>Options:</b>
+                              </label>
+                              <div class="form-group row">
+                                <div class="col-md-12">
+                                  <div class="form-check form-check-inline">
+                                    <label class="form-check-label" for="checkbox_subdomain">
+                                      <input class="form-check-input" id="checkbox_subdomain" type="checkbox"
+                                        checked>子域名查询
+                                    </label>
+                                  </div>
+                                  <div class="form-check form-check-inline">
+                                    <label class="form-check-label" for="checkbox_webtitle">
+                                      <input class="form-check-input" id="checkbox_webtitle" type="checkbox"
+                                        checked>域名标题
+                                    </label>
+                                  </div>
+                                  <div class="form-check form-check-inline" for="checkbox_fofasearch">
+                                    <label class="form-check-label">
+                                      <input class="form-check-input" id="checkbox_fofasearch" type="checkbox">查询FOFA接口
+                                    </label>
+                                  </div>
+                                  <div class="form-check form-check-inline">
+                                    <label class="form-check-label" for="checkbox_portscan">
+                                      <input class="form-check-input" id="checkbox_portscan" type="checkbox">IP端口扫描
+                                    </label>
+                                  </div>
+                                </div>
+                              </div>
+                              <label for="select_org"><b>资产关联的组织机构</b></label>
+                              <select class="form-control" id="select_org">
+                                <option value="">--选择组织机构--</option>
+                                {% for a in org_list %}
+                                <option value="{{ a['id'] }}">{{ a['org_name'] }}</option>
+                                {% endfor %}
+                              </select>
+                            </div>
+                            <div class="hr hr-16 hr-dotted"></div>
+                            <div class="modal-footer">
+                              <button type="button" class="btn btn-secondary" data-dismiss="modal" aria-hidden="true">取消
+                              </button>
+                              <button class="btn btn-primary org-update" type="button" id="start_task">
+                                开始任务
+                              </button>
+                            </div>
+                            <input type="hidden" id="org_id">
+                          </form>
+                        </div>
+                      </div><!-- /.modal-content -->
+                    </div><!-- /.modal-dialog -->
+                  </div>
                 </div>
               </div>
             </div>

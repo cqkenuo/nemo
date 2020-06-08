@@ -63,52 +63,77 @@ def new_task(action, options):
 def nmap(options):
     '''调用nmap进行端口扫描
     '''
-    return new_task('nmap',options)
+    return new_task('nmap', options)
 
 
 @celery_app.task(base=UpdateTaskStatus)
-def iplocation( options):
+def iplocation(options):
     '''获取ip的归属地
     '''
-    return new_task('iplocation',options)
+    return new_task('iplocation', options)
 
 
 @celery_app.task(base=UpdateTaskStatus)
 def webtitle(options):
     '''获取title
     '''
-    return new_task('webtitle',options)
+    return new_task('webtitle', options)
 
 
 @celery_app.task(base=UpdateTaskStatus)
-def domainip( options):
+def domainip(options):
     '''查询域名IP
     '''
-    return new_task('domain',options)
+    return new_task('domain', options)
 
 
 @celery_app.task(base=UpdateTaskStatus)
 def portscan(options):
     '''端口扫描综合任务
     '''
-    return new_task('portscan',options)
+    return new_task('portscan', options)
 
 
 @celery_app.task(base=UpdateTaskStatus)
 def fofasearch(options):
     '''调用fofa API
     '''
-    return new_task('fofasearch',options)
+    return new_task('fofasearch', options)
 
 
 @celery_app.task(base=UpdateTaskStatus)
 def subdomain(options):
     '''调用Sublist3r收集子域名信息
     '''
-    return new_task('submain',options)
+    return new_task('submain', options)
+
 
 @celery_app.task(base=UpdateTaskStatus)
 def domainscan(options):
     '''域名收集综合信息
     '''
-    return new_task('domainscan',options)
+    return new_task('domainscan', options)
+
+
+@celery_app.task(base=UpdateTaskStatus)
+def domainscan_with_portscan(options):
+    '''域名收集综合信息
+    '''
+    domainscan = DomainScan()
+    portscan = PortScan()
+    # 域名任务
+    domainscan.prepare(options)
+    domain_list = domainscan.execute()
+    # 得到域名的IP
+    ip_set = set()
+    for domain in domain_list:
+        if 'A' in domain and domain['A']:
+            ip_set.update(domain['A'])
+    # 生成portscan的默认参数
+    options_portscan = {'target': list(ip_set), 'port': '--top-ports 1000', 'ping': False,
+                        'webtitle': options['webtitle'], 'rate': 5000, 'tech': '-sS', 'iplocation': True, 
+                        'org_id': None if 'org_id' not in options else options['org_id']}
+    # 执行portscan任务
+    result = portscan.run(options_portscan)
+
+    return result

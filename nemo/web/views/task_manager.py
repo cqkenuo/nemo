@@ -1,89 +1,150 @@
 #!/usr/bin/env python3
-#coding:utf-8
+# coding:utf-8
+from datetime import datetime
 
-import json
-import hashlib
-import requests
+from flask import request
+from flask import render_template
+from flask import Blueprint
+from flask import jsonify
 
-from flask import Flask, request, url_for, render_template, Blueprint, redirect, render_template_string
 from .authenticate import login_check
-from core.database.organization import Organization
-from core.database.ip import Ip
-from core.database.domain import Domain
-from core.tasks.taskapi import TaskAPI
+from nemo.core.database.organization import Organization
+from nemo.core.database.ip import Ip
+from nemo.core.database.domain import Domain
+from nemo.core.tasks.taskapi import TaskAPI
 
 
 task_manager = Blueprint("task_manager", __name__)
 
-@task_manager.route('/task-add', methods = ['GET', 'POST'])
-#@login_check
-def task_add_view():
+
+def _str2bool(v):
+    return str(v).lower() in ('true', 'success', 'yes', '1')
+
+def _format_datetime(timestamp):
+    '''将timestamp时间戳格式化
     '''
-        添加任务
+    if not timestamp:
+        return ''
+    dt = datetime.fromtimestamp(timestamp)
+    return dt.strftime("%Y-%m-%d %H:%M:%S")
+
+
+def _format_runtime(seconds):
+    '''将执行时长的秒数转换为小时、分钟和秒
+    '''
+    if not seconds:
+        return ''
+    m, s = divmod(int(seconds), 60)
+    h, m = divmod(m, 60)
+    result = []
+    if h>0:
+        result.append('{}时'.format(h))
+    if m>0:
+        result.append('{}分'.format(m))
+    if s>0:
+        result.append('{}秒'.format(s))
+
+    return ''.join(result)
+
+@task_manager.route('/task-start-portscan', methods=['POST'])
+# @login_check
+def task_start_portscan_view():
+    '''启动IP端口扫描任务
     '''
     taskapi = TaskAPI()
-    ip_table = Ip()
-    org_table = Organization()
-    domain_table = Domain()
+    try:
+        # 获取参数
+        target = request.form.get('target', default='')
+        port = request.form.get('port', default='--top-ports 1000')
+        org_id = request.form.get('org_id', type=int, default=None)
+        rate = request.form.get('rate', type=int, default=5000)
+        nmap_tech = request.form.get('nmap_tech', type=str, default='-sS')
+        iplocation = request.form.get('iplocation')
+        ping = request.form.get('ping')
+        webtitle = request.form.get('webtitle')
+        fofasearch = request.form.get('fofasearch')
 
-    if request.method == 'GET':
-        
-        return render_template('task-add.html', org_list = [(org_row['id'],org_row['org_name']) for org_row in org_table.gets()])
-    #POST
-    task_info = {
-        'task_name': request.form.get('task_name'),
-        'task_type': request.form.get('task_type'),
-        'task_plan': request.form.get('task_plan'),
-        'org_names': request.form.get('org_names'),
-        'task_creator': request.form.get('task_creator')
-    }
-    print(task_info)
-    #taskapi.start_task('iplocation',kwargs={'task_name':'get ip location','options':{'target':('218.19.148.193',)}})
-    for org_id in task_info['org_names'].split(','):
-        for task in task_info['task_type'].split(','):
-            targets = []
-            options = {}
-            for domain_row in domain_table.gets(query = {'org_id': org_id}):
-                targets.append(domain_row['domain'])
-            for ip_row in ip_table.gets(query = {'org_id': org_id}):
-                targets.append(ip_row['ip'])
-            if not targets:
-                continue
-            if task == 'nmap':
-                options['port'] = '--top 1000'
-                options['ping'] = False
-                options['tech'] = 'sT'
-            elif task == 'portscan':
-                options['port'] = '80,8080,443'
-                options['org_id'] = int(org_id)
-                options['webtitle'] = True
-                options['iplocation'] = True
+        if not target or not port:
+            return jsonify({'status': 'fail', 'msg': 'no target or port'})
+        # 格式化tatget
+        target = [x.strip() for x in target.split('\n')]
+        options = {'target': target, 'port': port,
+                   'org_id': org_id, 'rate': rate, 'ping': _str2bool(ping), 'tech': nmap_tech, 'iplocation': _str2bool(iplocation), 'webtitle': _str2bool(webtitle)
+                   }
+        result = taskapi.start_task('portscan', kwargs={'options': options})
+        if _str2bool(fofasearch):
+            taskapi.start_task('fofasearch', kwargs={'options': options})
 
-            options['target'] = targets
-            
-            result = taskapi.start_task(task.strip(), kwargs = {'task_name': task_info['task_name'], 'options':options})
-            print(result)
-
-    return render_template('task-add.html', asset_list = 'aaaaaaaa')
+        return jsonify(result)
+    except Exception as e:
+        print(e)
+        return jsonify({'status': 'fail', 'msg': str(e)})
 
 
-@task_manager.route('/task-list', methods = ['GET', 'POST'])
-#@login_check
-def task_list_view():
+@task_manager.route('/task-start-domainscan', methods=['POST'])
+# @login_check
+def task_start_domainscan_view():
+    ''' 启动域名扫描任务
     '''
-        任务列表展示
+    taskapi = TaskAPI()
+    try:
+        # 获取参数
+        target = request.form.get('target', default='')
+        org_id = request.form.get('org_id', type=int, default=None)
+        subdomain = request.form.get('subdomain')
+        webtitle = request.form.get('webtitle')
+        fofasearch = request.form.get('fofasearch')
+        portscan = request.form.get('portscan')
+
+        if not target:
+            return jsonify({'status': 'fail', 'msg': 'no target'})
+        # 格式化tatget
+        target = [x.strip() for x in target.split('\n')]
+        options = {'target': target,
+                   'org_id': org_id, 'subdomain': _str2bool(subdomain), 'webtitle': _str2bool(webtitle)}
+        if _str2bool(portscan):
+            result = taskapi.start_task(
+                'domainscan_with_portscan', kwargs={'options': options})
+        else:
+            result = taskapi.start_task(
+                'domainscan', kwargs={'options': options})
+
+        if _str2bool(fofasearch):
+            taskapi.start_task('fofasearch', kwargs={'options': options})
+
+        return jsonify(result)
+    except Exception as e:
+        print(e)
+        return jsonify({'status': 'fail', 'msg': str(e)})
+
+
+@task_manager.route('/task-list', methods=['GET', 'POST'])
+# @login_check
+def task_list_view():
+    '''任务列表展示
     '''
     if request.method == 'GET':
         return render_template('task-list.html')
-
+        
+    taskapi = TaskAPI()
+    data = []
     try:
         draw = int(request.form.get('draw'))
         start = int(request.form.get('start'))
         length = int(request.form.get('length'))
-        search_key = request.form.get('search[value]')
-        order_column = request.form.get('order[0][column]') 
-        order_column = request.form.get('order[0][dir]')
-        data = [k for k in json.loads(requests.get('http://127.0.0.1:5555/api/tasks').text).values()]
+
+        task_status = request.form.get('task_status')
+        task_status = None if not task_status else task_status
+
+        task_result = taskapi.get_tasks(limit=None,state=task_status)
+        if task_result['status'] == 'success':
+            for k, t in task_result['result'].items():
+                task = {'uuid': t['uuid'], 'name': t['name'].replace('nemo.core.tasks.tasks.', '').replace('_', '-'), 
+                        'state': t['state'],'args': t['args'], 'kwargs': t['kwargs'], 'result': t['result']}
+                task.update(received=_format_datetime(t['received']))
+                task.update(started=_format_datetime(t['started']))
+                task.update(runtime=_format_runtime(t['runtime']))
+                data.append(task)
         count = len(data)
         json_data = {
             'draw': draw,
@@ -91,8 +152,9 @@ def task_list_view():
             'recordsFiltered': count,
             'data': data
         }
-
+        return jsonify(json_data)
     except Exception as e:
         print(e)
+        return jsonify({'draw': draw, 'data': [], 'recordsTotal': 0, 'recordsFiltered': 0})
 
-    return render_template_string(json.dumps(json_data))
+
